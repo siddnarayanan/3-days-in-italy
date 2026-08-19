@@ -102,11 +102,12 @@ export function buildItinerary(raw: RawItinerary, placesById: Map<string, Place>
   return {
     days,
     overallNotes: raw.overallNotes,
+    warnings: topWarnings,
   };
 }
 
 export function collectAllWarnings(itinerary: Itinerary, extra: string[]): string[] {
   const fromDays = itinerary.days.flatMap((d) => d.warnings);
   const fromStops = itinerary.days.flatMap((d) => d.stops.flatMap((s) => s.warnings));
-  return [...extra, ...fromDays, ...fromStops];
+  return [...extra, ...itinerary.warnings, ...fromDays, ...fromStops];
 }

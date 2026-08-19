@@ -56,6 +56,9 @@ export interface ItineraryDay {
 export interface Itinerary {
   days: ItineraryDay[];
   overallNotes: string;
+  // Trip-level issues that aren't scoped to one day or stop (unknown place
+  // ids dropped, the whole trip spanning a wide geographic area).
+  warnings: string[];
 }
 
 export interface PlanResponse {
