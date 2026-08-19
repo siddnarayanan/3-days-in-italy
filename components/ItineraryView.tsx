@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { arrayMove } from "@dnd-kit/sortable";
 import { buildItinerary, collectAllWarnings } from "@/lib/validate";
 import { addMinutesToTime } from "@/lib/hours";
+import { downloadItineraryPdf } from "@/lib/exportPdf";
 import type { RawItinerary } from "@/lib/itinerarySchema";
 import type { Itinerary, Place, Preferences } from "@/lib/types";
 import DayTimeline from "./DayTimeline";
@@ -65,6 +66,7 @@ export default function ItineraryView({
   const warnings = useMemo(() => collectAllWarnings(derived, []), [derived]);
 
   const day = derived.days.find((d) => d.day === activeDay) ?? derived.days[0];
+  const isLastDay = day.day === derived.days[derived.days.length - 1]?.day;
 
   const usedPlaceIds = useMemo(() => new Set(rawDays.flatMap((d) => d.stops.map((s) => s.placeId))), [rawDays]);
   const unusedCandidates = useMemo(
@@ -72,12 +74,16 @@ export default function ItineraryView({
     [availablePlaces, usedPlaceIds]
   );
 
+  const mappableStops = useMemo(() => day.stops.filter((s) => s.place?.lat != null && s.place?.lng != null), [day]);
   const points = useMemo(
     () =>
-      day.stops
-        .filter((s) => s.place?.lat != null && s.place?.lng != null)
-        .map((s, i) => ({ lat: s.place!.lat!, lng: s.place!.lng!, label: s.place!.name, order: i + 1 })),
-    [day]
+      mappableStops.map((s, i) => ({ lat: s.place!.lat!, lng: s.place!.lng!, label: s.place!.name, order: i + 1 })),
+    [mappableStops]
+  );
+  // Same numbering as the map pins, so a card and its pin always match.
+  const stopNumbers = useMemo(
+    () => new Map(mappableStops.map((s, i) => [s.placeId, i + 1])),
+    [mappableStops]
   );
 
   function handleRemoveStop(dayNumber: number, placeId: string) {
@@ -134,6 +140,14 @@ export default function ItineraryView({
           ))}
         </div>
         <div className="flex gap-2">
+          {isLastDay && (
+            <button
+              onClick={() => downloadItineraryPdf(derived, preferences)}
+              className="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800"
+            >
+              Download as PDF
+            </button>
+          )}
           <button
             onClick={onStartOver}
             className="rounded-lg border border-stone-300 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50"
@@ -168,6 +182,7 @@ export default function ItineraryView({
             onRemoveStop={(placeId) => handleRemoveStop(day.day, placeId)}
             onAddStop={() => setAddingToDay(day.day)}
             onReorderStops={(oldIndex, newIndex) => handleReorderStops(day.day, oldIndex, newIndex)}
+            stopNumbers={stopNumbers}
           />
         </div>
         <div className="h-96 lg:col-span-2 lg:h-auto lg:min-h-[500px]">
@@ -180,13 +195,6 @@ export default function ItineraryView({
           )}
         </div>
       </div>
-
-      {itinerary.overallNotes && (
-        <div className="rounded-lg bg-stone-100 p-4 text-sm text-stone-700">
-          <span className="font-medium">Trip notes: </span>
-          {itinerary.overallNotes}
-        </div>
-      )}
 
       {addingToDay != null && (
         <AddStopModal

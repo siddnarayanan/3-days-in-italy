@@ -8,9 +8,10 @@ import PlaceCard from "./PlaceCard";
 interface Props {
   stop: ItineraryStop;
   onRemove: () => void;
+  number?: number;
 }
 
-export default function SortableStop({ stop, onRemove }: Props) {
+export default function SortableStop({ stop, onRemove, number }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: stop.placeId,
   });
@@ -23,7 +24,13 @@ export default function SortableStop({ stop, onRemove }: Props) {
 
   return (
     <div ref={setNodeRef} style={style}>
-      <PlaceCard stop={stop} onRemove={onRemove} dragHandleProps={{ ...attributes, ...listeners }} isDragging={isDragging} />
+      <PlaceCard
+        stop={stop}
+        onRemove={onRemove}
+        dragHandleProps={{ ...attributes, ...listeners }}
+        isDragging={isDragging}
+        number={number}
+      />
     </div>
   );
 }

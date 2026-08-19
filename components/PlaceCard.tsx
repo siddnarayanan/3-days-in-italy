@@ -32,9 +32,11 @@ interface Props {
   onRemove?: () => void;
   dragHandleProps?: HTMLAttributes<HTMLButtonElement>;
   isDragging?: boolean;
+  // Matches the numbered pin for this stop on the map, so the two views correlate.
+  number?: number;
 }
 
-export default function PlaceCard({ stop, onRemove, dragHandleProps, isDragging }: Props) {
+export default function PlaceCard({ stop, onRemove, dragHandleProps, isDragging, number }: Props) {
   const place = stop.place;
   if (!place) return null;
 
@@ -44,6 +46,11 @@ export default function PlaceCard({ stop, onRemove, dragHandleProps, isDragging 
         isDragging ? "shadow-lg" : ""
       }`}
     >
+      {number != null && (
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-700 text-xs font-semibold text-white">
+          {number}
+        </span>
+      )}
       {dragHandleProps && (
         <button
           {...dragHandleProps}

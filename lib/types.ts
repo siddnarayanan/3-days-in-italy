@@ -61,7 +61,9 @@ export interface Itinerary {
 export interface PlanResponse {
   itinerary: Itinerary;
   warnings: string[];
-  // The full candidate pool the planner chose from (home base + travel radius
-  // filtered), so the client can offer manual add/remove without a round-trip.
+  // The entire dataset (not just the home base + travel radius filtered set
+  // generation used) — manual "add a stop" is a deliberate override and
+  // shouldn't be bound by that earlier choice. Lets the client do add/remove
+  // without a round-trip.
   availablePlaces: Place[];
 }

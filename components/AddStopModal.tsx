@@ -78,7 +78,7 @@ export default function AddStopModal({ dayNumber, candidates, dayStops, onAdd, o
           {anchorPoints.length > 0 && <p className="mt-1 text-xs text-stone-400">Sorted by distance from this day&apos;s other stops</p>}
         </div>
         <div className="flex-1 overflow-y-auto p-3">
-          {filtered.length === 0 && <p className="p-4 text-center text-sm text-stone-400">No places match.</p>}
+          {filtered.length === 0 && <p className="p-4 text-center text-sm text-stone-400">No places match your search.</p>}
           <div className="flex flex-col gap-2">
             {filtered.map(({ place, distanceKm }) => (
               <button

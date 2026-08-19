@@ -8,9 +8,11 @@ interface Props {
   onRemoveStop: (placeId: string) => void;
   onAddStop: () => void;
   onReorderStops: (oldIndex: number, newIndex: number) => void;
+  // placeId -> number matching that stop's pin on the map (see ItineraryView).
+  stopNumbers: Map<string, number>;
 }
 
-export default function DayTimeline({ day, onRemoveStop, onAddStop, onReorderStops }: Props) {
+export default function DayTimeline({ day, onRemoveStop, onAddStop, onReorderStops, stopNumbers }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -47,7 +49,12 @@ export default function DayTimeline({ day, onRemoveStop, onAddStop, onReorderSto
         <SortableContext items={day.stops.map((s) => s.placeId)} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-3">
             {day.stops.map((stop) => (
-              <SortableStop key={stop.placeId} stop={stop} onRemove={() => onRemoveStop(stop.placeId)} />
+              <SortableStop
+                key={stop.placeId}
+                stop={stop}
+                onRemove={() => onRemoveStop(stop.placeId)}
+                number={stopNumbers.get(stop.placeId)}
+              />
             ))}
           </div>
         </SortableContext>
