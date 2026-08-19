@@ -145,7 +145,7 @@ export default function ItineraryView({
               onClick={() => downloadItineraryPdf(derived, preferences)}
               className="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800"
             >
-              Download as PDF
+              Download Itinerary
             </button>
           )}
           <button
