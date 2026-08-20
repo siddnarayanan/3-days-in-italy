@@ -46,9 +46,7 @@ export default function ItineraryView({
   isRegenerating,
 }: Props) {
   const [activeDay, setActiveDay] = useState(1);
-  // A page refresh shouldn't lose manual edits — restore them if they belong
-  // to this same generated itinerary (overallNotes is unique enough per
-  // generation to use as a cheap fingerprint), otherwise start from scratch.
+
   const [rawDays, setRawDays] = useState<RawItinerary["days"]>(() => {
     const snapshot = loadEditsSnapshot();
     if (snapshot && snapshot.overallNotes === itinerary.overallNotes) return snapshot.days;
@@ -56,9 +54,7 @@ export default function ItineraryView({
   });
   const [stopModal, setStopModal] = useState<StopModalState | null>(null);
 
-  // A regenerate produces a brand-new itinerary object — resync local edits to it
-  // by adjusting state during render (React's recommended pattern for this,
-  // rather than an effect that would cause an extra render pass).
+  // A regenerate produces a brand-new itinerary object
   const [syncedItinerary, setSyncedItinerary] = useState(itinerary);
   if (itinerary !== syncedItinerary) {
     setSyncedItinerary(itinerary);
@@ -72,10 +68,7 @@ export default function ItineraryView({
 
   const placesById = useMemo(() => new Map(availablePlaces.map((p) => [p.id, p])), [availablePlaces]);
 
-  // Re-derive the joined + validated itinerary from local edits on every change —
-  // reuses the exact same guardrail logic (lib/validate.ts) the server used, so
-  // manual add/remove/swap/reorder get fresh hours/duplicate/geo-spread checks
-  // for free, with no round-trip.
+  // Re-derive the joined + validated itinerary from local edits on every change
   const derived = useMemo(
     () => buildItinerary({ days: rawDays, overallNotes: itinerary.overallNotes }, placesById, preferences),
     [rawDays, placesById, preferences, itinerary.overallNotes]

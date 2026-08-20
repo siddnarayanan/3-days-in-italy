@@ -56,17 +56,11 @@ export interface ItineraryDay {
 export interface Itinerary {
   days: ItineraryDay[];
   overallNotes: string;
-  // Trip-level issues that aren't scoped to one day or stop (unknown place
-  // ids dropped, the whole trip spanning a wide geographic area).
   warnings: string[];
 }
 
 export interface PlanResponse {
   itinerary: Itinerary;
   warnings: string[];
-  // The entire dataset (not just the home base + travel radius filtered set
-  // generation used) — manual "add a stop" is a deliberate override and
-  // shouldn't be bound by that earlier choice. Lets the client do add/remove
-  // without a round-trip.
   availablePlaces: Place[];
 }

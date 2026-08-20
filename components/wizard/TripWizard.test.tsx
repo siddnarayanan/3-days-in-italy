@@ -4,9 +4,6 @@ import { render, screen, fireEvent, within } from "@testing-library/react";
 import TripWizard from "./TripWizard";
 import type { Place } from "@/lib/types";
 
-// StepLocation renders a map preview via next/dynamic; Leaflet doesn't run
-// meaningfully in jsdom (no real layout engine), so it's mocked out here —
-// this test is about the wizard's navigation/state logic, not the map.
 jest.mock("@/components/MapView", () => ({
   __esModule: true,
   default: () => null,

@@ -2,13 +2,6 @@ import rawData from "@/data/italy.json";
 import { parseHours } from "./hours";
 import type { Place } from "./types";
 
-// The dataset's field names are consistent (id, name, type, city, region,
-// neighborhood, description, latitude, longitude, hours, duration_minutes,
-// price_range, rating, tags, seasonal_notes, booking_required), but content is
-// messy: `hours` is free text in many formats and is sometimes null;
-// `seasonal_notes` can override or contradict `hours`; tags have at least one
-// known typo variant (`local_favorite` vs `local-favorite`).
-
 interface RawPlace {
   id: string;
   name: string;

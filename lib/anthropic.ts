@@ -100,11 +100,6 @@ async function generateItineraryOnce(preferences: Preferences, places: Place[]):
   return parsed.data;
 }
 
-// Forced tool-use output occasionally comes back malformed (a nested field
-// serialized as a string instead of an object, a truncated array) — a known,
-// if uncommon, LLM tool-calling failure mode rather than something a prompt
-// tweak reliably fixes. One retry clears it in practice without surfacing a
-// user-facing error for what's usually just sampling variance.
 export async function generateItinerary(preferences: Preferences, places: Place[]): Promise<RawItinerary> {
   try {
     return await generateItineraryOnce(preferences, places);

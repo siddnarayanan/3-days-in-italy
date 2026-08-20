@@ -40,12 +40,6 @@ export function buildItinerary(raw: RawItinerary, placesById: Map<string, Place>
       const hoursWarning = checkHoursConflict(place.hoursParsed, dayKey, rawStop.startTime);
       if (hoursWarning) stopWarnings.push(hoursWarning);
 
-      // Does the schedule leave enough time for the previous stop's own visit,
-      // and then enough time to travel here on top of that? Two distinct
-      // problems: the first is about the previous stop overrunning into this
-      // one regardless of distance, the second is genuinely about the trip
-      // between them. Both skipped when times are already out of order —
-      // that's its own warning below.
       if (prevStop && rawStop.startTime > prevStop.startTime) {
         const gapMinutes = timeToMinutes(rawStop.startTime) - timeToMinutes(prevStop.startTime);
         const prevDuration = prevStop.place?.durationMinutes ?? 60;

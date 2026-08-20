@@ -1,13 +1,6 @@
 import type { RawItinerary } from "./itinerarySchema";
 import type { PlanResponse, Preferences } from "./types";
 
-// A page refresh shouldn't lose either an in-progress wizard or a finished
-// (possibly hand-edited) itinerary. Client-side only — nothing here talks to
-// a server, matching the rest of the app's no-external-dependency design.
-// Every read/write is wrapped defensively: localStorage can throw (private
-// browsing, storage full, SSR with no `window`) and persistence is a nicety,
-// never something that should break the app if it fails.
-
 const WIZARD_KEY = "italy-planner:wizard:v1";
 const TRIP_KEY = "italy-planner:trip:v1";
 const EDITS_KEY = "italy-planner:edits:v1";
@@ -76,9 +69,6 @@ export function clearTripSnapshot(): void {
 }
 
 export interface EditsSnapshot {
-  // overallNotes is generated fresh text per generation, unique enough to use
-  // as a cheap fingerprint: only restore edits that belong to the itinerary
-  // currently being viewed, not stale edits from a since-regenerated one.
   overallNotes: string;
   days: RawItinerary["days"];
 }

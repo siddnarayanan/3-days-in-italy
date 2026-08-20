@@ -3,11 +3,6 @@ import { haversineKm, estimateTravelMinutes } from "./geo";
 import type { RawItinerary } from "./itinerarySchema";
 import type { DayKey, Place, Preferences } from "./types";
 
-// Rule-based itinerary builder — no external API calls, so nothing here can
-// rate-limit, cost money, or 502 when a reviewer opens the deployed app.
-// Produces the same RawItinerary shape the LLM path did (lib/anthropic.ts),
-// so it flows through the same validation/guardrail layer in lib/validate.ts.
-
 interface Slot {
   time: string;
   kind: "meal" | "activity";
@@ -57,7 +52,6 @@ function humanizeType(type: string): string {
   return TYPE_LABELS[type] ?? type.replace(/_/g, " ");
 }
 
-/** Cheap keyword match against free-text notes so they still influence selection without an LLM. */
 function inferInterestsFromNotes(notes: string, knownTags: Set<string>): string[] {
   const words = notes.toLowerCase().split(/[^a-z-]+/).filter(Boolean);
   return words.filter((w) => knownTags.has(w));
@@ -95,9 +89,6 @@ function scorePlace(place: Place, ctx: ScoreContext): number {
   score -= priorUses * 0.4;
 
   if (ctx.prevPlace?.lat != null && ctx.prevPlace?.lng != null && place.lat != null && place.lng != null) {
-    // Minutes, not raw km — a 50km highway hop and a 15km urban crawl cover
-    // very different ground but can cost similar real time, and it's the
-    // time that actually matters for whether this stop fits the day.
     const km = haversineKm(ctx.prevPlace.lat, ctx.prevPlace.lng, place.lat, place.lng);
     score -= estimateTravelMinutes(km) / 15;
   }

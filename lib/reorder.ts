@@ -1,9 +1,3 @@
-// Pulled out of the components so the actual reordering logic (index
-// resolution from a drag event, and the "positions keep their time slots"
-// rule) is testable without rendering anything or simulating a real drag —
-// dnd-kit's pointer physics aren't practically unit-testable in jsdom, but
-// this logic is what actually matters and it's plain data in, data out.
-
 function arrayMove<T>(arr: T[], from: number, to: number): T[] {
   const copy = arr.slice();
   const [item] = copy.splice(from, 1);
@@ -24,12 +18,6 @@ export function resolveReorderIndices(
   return { oldIndex, newIndex };
 }
 
-/**
- * Reorders stops by position, but each position keeps its original time slot
- * — dragging a place to a new spot moves the place into that slot's time, not
- * the other way around. If that lands it somewhere its hours don't cover, the
- * guardrail layer (lib/validate.ts) catches it like any other conflict.
- */
 export function reorderStopsKeepingTimes<T extends { startTime: string }>(
   stops: T[],
   oldIndex: number,

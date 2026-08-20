@@ -31,7 +31,6 @@ function dotIcon() {
 
 interface Props {
   points: MapPoint[];
-  /** Numbered pins + a connecting route line (default) vs. plain dots for a non-sequential preview. */
   variant?: "route" | "preview";
 }
 
@@ -87,12 +86,6 @@ export default function MapView({ points, variant = "route" }: Props) {
     };
   }, []);
 
-  // Leaflet sizes its tile grid to the container's dimensions at init time and
-  // never re-checks on its own — if the container resizes afterward (our grid
-  // column width changes with viewport, or the map mounts before the layout
-  // has settled), the map keeps rendering at the stale size, leaving a gray
-  // gap. A ResizeObserver keeps it in sync, and its callback fires once
-  // immediately on observe(), which also fixes the first-paint case.
   useEffect(() => {
     if (!containerRef.current) return;
     const resizeObserver = new ResizeObserver(() => {

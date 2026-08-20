@@ -1,12 +1,6 @@
 import { haversineKm } from "./geo";
 import type { Place } from "./types";
 
-// Calibrated against the real dataset's city-to-city distances (see project
-// notes): 60km captures each hub's classic day-trip satellites (Florence->Siena
-// 49km, Milan->Como/Bellagio/Lenno 42-58km, Venice->Burano/Padua 8-36km,
-// Bologna->Modena 37km); 130km reaches the next ring (Bologna, Pienza, Parma
-// from Florence; Parma from Milan); 220km covers the full Emilia-Romagna/Veneto
-// spread and pulls Tuscany into range from Rome.
 export const TRAVEL_RADIUS_TIERS = [
   { km: 60, label: "Nearby day trips", hint: "~1hr away" },
   { km: 130, label: "Regional", hint: "~2hr away" },

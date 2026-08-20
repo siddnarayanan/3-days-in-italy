@@ -26,10 +26,6 @@ export default function TripWizard({ places, onSubmit, isSubmitting, submitError
   const [stepIndex, setStepIndex] = useState(() => loadWizardSnapshot<WizardDraft>()?.stepIndex ?? 0);
   const [draft, setDraft] = useState<WizardDraft>(() => loadWizardSnapshot<WizardDraft>()?.draft ?? INITIAL_DRAFT);
 
-  // A page refresh shouldn't lose in-progress answers. Cleared once a trip is
-  // actually generated (see PlannerApp), not here — if generation fails, the
-  // user is still on this same instance, so nothing needs restoring anyway,
-  // but if they refresh mid-error their answers should still be there.
   useEffect(() => {
     saveWizardSnapshot(stepIndex, draft);
   }, [stepIndex, draft]);

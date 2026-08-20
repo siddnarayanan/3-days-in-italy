@@ -26,8 +26,6 @@ const DAY_ALIASES: Record<string, DayKey> = {
 
 function parseTimeToken(token: string): string | null {
   const t = token.trim().toLowerCase();
-  // "24:00" / "24" represents midnight at the end of the day — kept as a
-  // sentinel rather than folded into "00:00" so range comparisons stay simple.
   if (/^24(:00)?$/.test(t)) return "24:00";
   const m = t.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
   if (!m) return null;
@@ -97,14 +95,6 @@ function parseTimeList(str: string): HoursWindow[] | null {
 const DAY_GROUP_TIME_RE =
   /([A-Za-z]+(?:[\s,-]+[A-Za-z]+)*)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*[-–]\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?(?:\s*,\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*[-–]\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?)*)/g;
 
-/**
- * Best-effort parse of the dataset's free-text `hours` field. Real examples include
- * "9:00-19:00" (applies daily, no day prefix), "Daily 10:00-24:00",
- * "Mon-Sat 12:30-14:30, 19:30-22:30" (split lunch/dinner service),
- * "Wed-Mon 10:00-18:00" (wraps across the week), and unparseable free text like
- * "Evenings" or "Morning only" — those fall through to `null` and the raw string
- * is shown as-is in the UI rather than guessed at.
- */
 export function parseHours(raw: unknown): ParsedHours | null {
   if (!raw || typeof raw !== "string") return null;
   const trimmed = raw.trim();
