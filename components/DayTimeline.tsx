@@ -1,5 +1,6 @@
 import { DndContext, PointerSensor, KeyboardSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { resolveReorderIndices } from "@/lib/reorder";
 import type { ItineraryDay } from "@/lib/types";
 import SortableStop from "./SortableStop";
 import TravelConnector from "./TravelConnector";
@@ -8,12 +9,13 @@ interface Props {
   day: ItineraryDay;
   onRemoveStop: (placeId: string) => void;
   onAddStop: () => void;
+  onSwapStop: (placeId: string) => void;
   onReorderStops: (oldIndex: number, newIndex: number) => void;
   // placeId -> number matching that stop's pin on the map (see ItineraryView).
   stopNumbers: Map<string, number>;
 }
 
-export default function DayTimeline({ day, onRemoveStop, onAddStop, onReorderStops, stopNumbers }: Props) {
+export default function DayTimeline({ day, onRemoveStop, onAddStop, onSwapStop, onReorderStops, stopNumbers }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -21,11 +23,12 @@ export default function DayTimeline({ day, onRemoveStop, onAddStop, onReorderSto
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = day.stops.findIndex((s) => s.placeId === active.id);
-    const newIndex = day.stops.findIndex((s) => s.placeId === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-    onReorderStops(oldIndex, newIndex);
+    const resolved = resolveReorderIndices(
+      day.stops.map((s) => s.placeId),
+      String(active.id),
+      over ? String(over.id) : null
+    );
+    if (resolved) onReorderStops(resolved.oldIndex, resolved.newIndex);
   }
 
   return (
@@ -54,6 +57,7 @@ export default function DayTimeline({ day, onRemoveStop, onAddStop, onReorderSto
                 <SortableStop
                   stop={stop}
                   onRemove={() => onRemoveStop(stop.placeId)}
+                  onSwap={() => onSwapStop(stop.placeId)}
                   number={stopNumbers.get(stop.placeId)}
                 />
                 {i < day.stops.length - 1 && <TravelConnector from={stop} to={day.stops[i + 1]} />}

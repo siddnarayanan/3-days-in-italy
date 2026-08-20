@@ -1,11 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
-import { arrayMove } from "@dnd-kit/sortable";
-import { buildItinerary, collectAllWarnings } from "@/lib/validate";
+import { useEffect, useMemo, useState } from "react";
+import { buildItinerary } from "@/lib/validate";
 import { addMinutesToTime } from "@/lib/hours";
 import { downloadItineraryPdf } from "@/lib/exportPdf";
+import { reorderStopsKeepingTimes } from "@/lib/reorder";
+import { loadEditsSnapshot, saveEditsSnapshot } from "@/lib/persistence";
 import type { RawItinerary } from "@/lib/itinerarySchema";
 import type { Itinerary, Place, Preferences } from "@/lib/types";
 import DayTimeline from "./DayTimeline";
@@ -31,6 +32,11 @@ function toRawDays(itinerary: Itinerary): RawItinerary["days"] {
   }));
 }
 
+interface StopModalState {
+  day: number;
+  replacingPlaceId: string | null; // null = adding a new stop; set = swapping this one out
+}
+
 export default function ItineraryView({
   itinerary,
   preferences,
@@ -40,9 +46,19 @@ export default function ItineraryView({
   isRegenerating,
 }: Props) {
   const [activeDay, setActiveDay] = useState(1);
-  const [rawDays, setRawDays] = useState<RawItinerary["days"]>(() => toRawDays(itinerary));
-  const [addingToDay, setAddingToDay] = useState<number | null>(null);
+  // A page refresh shouldn't lose manual edits — restore them if they belong
+  // to this same generated itinerary (overallNotes is unique enough per
+  // generation to use as a cheap fingerprint), otherwise start from scratch.
+  const [rawDays, setRawDays] = useState<RawItinerary["days"]>(() => {
+    const snapshot = loadEditsSnapshot();
+    if (snapshot && snapshot.overallNotes === itinerary.overallNotes) return snapshot.days;
+    return toRawDays(itinerary);
+  });
+  const [stopModal, setStopModal] = useState<StopModalState | null>(null);
 
+  // A regenerate produces a brand-new itinerary object — resync local edits to it
+  // by adjusting state during render (React's recommended pattern for this,
+  // rather than an effect that would cause an extra render pass).
   const [syncedItinerary, setSyncedItinerary] = useState(itinerary);
   if (itinerary !== syncedItinerary) {
     setSyncedItinerary(itinerary);
@@ -50,14 +66,20 @@ export default function ItineraryView({
     setActiveDay(1);
   }
 
+  useEffect(() => {
+    saveEditsSnapshot({ overallNotes: itinerary.overallNotes, days: rawDays });
+  }, [rawDays, itinerary.overallNotes]);
+
   const placesById = useMemo(() => new Map(availablePlaces.map((p) => [p.id, p])), [availablePlaces]);
 
+  // Re-derive the joined + validated itinerary from local edits on every change —
+  // reuses the exact same guardrail logic (lib/validate.ts) the server used, so
+  // manual add/remove/swap/reorder get fresh hours/duplicate/geo-spread checks
+  // for free, with no round-trip.
   const derived = useMemo(
     () => buildItinerary({ days: rawDays, overallNotes: itinerary.overallNotes }, placesById, preferences),
     [rawDays, placesById, preferences, itinerary.overallNotes]
   );
-  const warnings = useMemo(() => collectAllWarnings(derived, []), [derived]);
-
   const day = derived.days.find((d) => d.day === activeDay) ?? derived.days[0];
   const isLastDay = day.day === derived.days[derived.days.length - 1]?.day;
 
@@ -86,18 +108,10 @@ export default function ItineraryView({
   }
 
   function handleReorderStops(dayNumber: number, oldIndex: number, newIndex: number) {
+    // If the new position puts a place somewhere its hours don't cover, the
+    // guardrail layer (buildItinerary, re-run below) surfaces that as a warning.
     setRawDays((prev) =>
-      prev.map((d) => {
-        if (d.day !== dayNumber) return d;
-        // Positions keep their original time slots — dragging a place to a new
-        // position moves it into that slot's time, not the other way around.
-        // If that puts it somewhere its hours don't cover, the guardrail layer
-        // (buildItinerary, re-run below) will surface that as a warning.
-        const times = d.stops.map((s) => s.startTime);
-        const reordered = arrayMove(d.stops, oldIndex, newIndex);
-        const stops = reordered.map((s, i) => ({ ...s, startTime: times[i] }));
-        return { ...d, stops };
-      })
+      prev.map((d) => (d.day === dayNumber ? { ...d, stops: reorderStopsKeepingTimes(d.stops, oldIndex, newIndex) } : d))
     );
   }
 
@@ -113,6 +127,23 @@ export default function ItineraryView({
         );
         return { ...d, stops };
       })
+    );
+  }
+
+  function handleSwapStop(dayNumber: number, oldPlaceId: string, newPlace: Place) {
+    // Replaces in place — same position, same time slot — rather than
+    // remove-then-add, which would drop the swap at the end of the day instead.
+    setRawDays((prev) =>
+      prev.map((d) =>
+        d.day === dayNumber
+          ? {
+              ...d,
+              stops: d.stops.map((s) =>
+                s.placeId === oldPlaceId ? { placeId: newPlace.id, startTime: s.startTime, note: "Swapped in by you" } : s
+              ),
+            }
+          : d
+      )
     );
   }
 
@@ -162,7 +193,8 @@ export default function ItineraryView({
           <DayTimeline
             day={day}
             onRemoveStop={(placeId) => handleRemoveStop(day.day, placeId)}
-            onAddStop={() => setAddingToDay(day.day)}
+            onAddStop={() => setStopModal({ day: day.day, replacingPlaceId: null })}
+            onSwapStop={(placeId) => setStopModal({ day: day.day, replacingPlaceId: placeId })}
             onReorderStops={(oldIndex, newIndex) => handleReorderStops(day.day, oldIndex, newIndex)}
             stopNumbers={stopNumbers}
           />
@@ -178,15 +210,25 @@ export default function ItineraryView({
         </div>
       </div>
 
-      {addingToDay != null && (
-        <AddStopModal
-          dayNumber={addingToDay}
-          candidates={unusedCandidates}
-          dayStops={derived.days.find((d) => d.day === addingToDay)?.stops ?? []}
-          onAdd={(place) => handleAddStop(addingToDay, place)}
-          onClose={() => setAddingToDay(null)}
-        />
-      )}
+      {stopModal != null &&
+        (() => {
+          const modalDay = derived.days.find((d) => d.day === stopModal.day);
+          const dayStops = (modalDay?.stops ?? []).filter((s) => s.placeId !== stopModal.replacingPlaceId);
+          return (
+            <AddStopModal
+              dayNumber={stopModal.day}
+              candidates={unusedCandidates}
+              dayStops={dayStops}
+              mode={stopModal.replacingPlaceId ? "swap" : "add"}
+              onAdd={(place) =>
+                stopModal.replacingPlaceId
+                  ? handleSwapStop(stopModal.day, stopModal.replacingPlaceId, place)
+                  : handleAddStop(stopModal.day, place)
+              }
+              onClose={() => setStopModal(null)}
+            />
+          );
+        })()}
     </div>
   );
 }

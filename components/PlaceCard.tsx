@@ -30,13 +30,14 @@ function GripIcon() {
 interface Props {
   stop: ItineraryStop;
   onRemove?: () => void;
+  onSwap?: () => void;
   dragHandleProps?: HTMLAttributes<HTMLButtonElement>;
   isDragging?: boolean;
   // Matches the numbered pin for this stop on the map, so the two views correlate.
   number?: number;
 }
 
-export default function PlaceCard({ stop, onRemove, dragHandleProps, isDragging, number }: Props) {
+export default function PlaceCard({ stop, onRemove, onSwap, dragHandleProps, isDragging, number }: Props) {
   const place = stop.place;
   if (!place) return null;
 
@@ -71,6 +72,16 @@ export default function PlaceCard({ stop, onRemove, dragHandleProps, isDragging,
           <div className="flex items-center gap-2 text-sm text-stone-500">
             {place.rating != null && <span>★ {place.rating}</span>}
             {place.priceRange && <span>{place.priceRange}</span>}
+            {onSwap && (
+              <button
+                onClick={onSwap}
+                aria-label={`Swap ${place.name} for something else`}
+                title="Swap for a different place"
+                className="rounded-full px-1.5 py-0.5 text-stone-400 hover:bg-indigo-50 hover:text-indigo-600"
+              >
+                ⇄
+              </button>
+            )}
             {onRemove && (
               <button
                 onClick={onRemove}

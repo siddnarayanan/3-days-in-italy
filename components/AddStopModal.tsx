@@ -8,11 +8,12 @@ interface Props {
   dayNumber: number;
   candidates: Place[];
   dayStops: ItineraryStop[];
+  mode?: "add" | "swap";
   onAdd: (place: Place) => void;
   onClose: () => void;
 }
 
-export default function AddStopModal({ dayNumber, candidates, dayStops, onAdd, onClose }: Props) {
+export default function AddStopModal({ dayNumber, candidates, dayStops, mode = "add", onAdd, onClose }: Props) {
   const [query, setQuery] = useState("");
 
   const anchorPoints = useMemo(
@@ -62,7 +63,9 @@ export default function AddStopModal({ dayNumber, candidates, dayStops, onAdd, o
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-stone-200 p-4">
-          <h3 className="font-semibold text-stone-900">Add a stop to Day {dayNumber}</h3>
+          <h3 className="font-semibold text-stone-900">
+            {mode === "swap" ? "Swap this stop for" : "Add a stop to"} Day {dayNumber}
+          </h3>
           <button onClick={onClose} aria-label="Close" className="rounded-full p-1 text-stone-400 hover:bg-stone-100">
             ✕
           </button>
@@ -99,7 +102,9 @@ export default function AddStopModal({ dayNumber, candidates, dayStops, onAdd, o
                     {distanceKm != null && ` · ${distanceKm < 1 ? "<1" : Math.round(distanceKm)}km away`}
                   </div>
                 </div>
-                <span className="shrink-0 rounded-full bg-indigo-600 px-3 py-1 text-xs font-medium text-white">Add</span>
+                <span className="shrink-0 rounded-full bg-indigo-600 px-3 py-1 text-xs font-medium text-white">
+                  {mode === "swap" ? "Swap" : "Add"}
+                </span>
               </button>
             ))}
           </div>
