@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { haversineKm, estimateTravelMinutes, estimateTravelMode } from "./geo";
 import type { Itinerary, Preferences } from "./types";
 
 const MARGIN = 15;
@@ -60,7 +61,8 @@ export function downloadItineraryPdf(itinerary: Itinerary, preferences: Preferen
     block(`Day ${day.day}: ${day.theme}`, { size: 14, style: "bold", color: COLOR_INDIGO, gap: 1 });
     if (day.summary) block(day.summary, { size: 10, style: "italic", color: COLOR_STONE_500, gap: 3 });
 
-    for (const stop of day.stops) {
+    for (let i = 0; i < day.stops.length; i++) {
+      const stop = day.stops[i];
       const place = stop.place;
       if (!place) continue;
 
@@ -89,6 +91,14 @@ export function downloadItineraryPdf(itinerary: Itinerary, preferences: Preferen
 
       for (const w of stop.warnings) {
         block(`⚠ ${w}`, { size: 9, style: "bold", color: COLOR_RED, gap: 1 });
+      }
+
+      const next = day.stops[i + 1]?.place;
+      if (place.lat != null && place.lng != null && next?.lat != null && next?.lng != null) {
+        const km = haversineKm(place.lat, place.lng, next.lat, next.lng);
+        const minutes = estimateTravelMinutes(km);
+        const mode = estimateTravelMode(km) === "walk" ? "walk" : "drive";
+        block(`↓ ~${minutes} min ${mode} to next stop`, { size: 8.5, color: COLOR_STONE_500, gap: 1 });
       }
 
       y += 3;

@@ -54,10 +54,6 @@ export async function POST(request: Request) {
     const raw = buildDeterministicItinerary(candidatePlaces, preferences);
     const itinerary = buildItinerary(raw, placesById, preferences);
     const warnings = collectAllWarnings(itinerary, []);
-    // Generation respects the traveler's chosen radius, but manual add/remove
-    // (lib/deterministicPlanner.ts's output is just a starting point) shouldn't
-    // be — the full dataset goes to the client so "Add a stop" can reach any
-    // place, not just the ones the auto-generated plan was scoped to.
     const response: PlanResponse = { itinerary, warnings, availablePlaces: places };
     return NextResponse.json(response);
   } catch (err) {

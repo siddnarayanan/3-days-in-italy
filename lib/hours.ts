@@ -151,11 +151,15 @@ export function dayKeyForDate(isoDate: string, dayOffset: number): DayKey | null
   return WEEKDAY_BY_JS_DAY[base.getDay()];
 }
 
+/** "HH:MM" -> minutes since midnight. */
+export function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
 /** Adds minutes to an "HH:MM" time, clamped to [06:00, 23:45] so suggested slots stay plausible. */
 export function addMinutesToTime(time: string, minutes: number): string {
-  const [h, m] = time.split(":").map(Number);
-  let total = h * 60 + m + minutes;
-  total = Math.max(6 * 60, Math.min(23 * 60 + 45, total));
+  const total = Math.max(6 * 60, Math.min(23 * 60 + 45, timeToMinutes(time) + minutes));
   const hh = Math.floor(total / 60);
   const mm = total % 60;
   return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;

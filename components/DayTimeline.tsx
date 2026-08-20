@@ -2,6 +2,7 @@ import { DndContext, PointerSensor, KeyboardSensor, closestCenter, useSensor, us
 import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import type { ItineraryDay } from "@/lib/types";
 import SortableStop from "./SortableStop";
+import TravelConnector from "./TravelConnector";
 
 interface Props {
   day: ItineraryDay;
@@ -48,13 +49,15 @@ export default function DayTimeline({ day, onRemoveStop, onAddStop, onReorderSto
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={day.stops.map((s) => s.placeId)} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-3">
-            {day.stops.map((stop) => (
-              <SortableStop
-                key={stop.placeId}
-                stop={stop}
-                onRemove={() => onRemoveStop(stop.placeId)}
-                number={stopNumbers.get(stop.placeId)}
-              />
+            {day.stops.map((stop, i) => (
+              <div key={stop.placeId} className="flex flex-col gap-3">
+                <SortableStop
+                  stop={stop}
+                  onRemove={() => onRemoveStop(stop.placeId)}
+                  number={stopNumbers.get(stop.placeId)}
+                />
+                {i < day.stops.length - 1 && <TravelConnector from={stop} to={day.stops[i + 1]} />}
+              </div>
             ))}
           </div>
         </SortableContext>

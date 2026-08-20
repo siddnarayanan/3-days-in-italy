@@ -1,4 +1,4 @@
-import { haversineKm } from "./geo";
+import { haversineKm, estimateTravelMinutes, estimateTravelMode } from "./geo";
 
 describe("haversineKm", () => {
   it("returns 0 for the same point", () => {
@@ -26,5 +26,41 @@ describe("haversineKm", () => {
     const km = haversineKm(rome.lat, rome.lng, florence.lat, florence.lng);
     expect(km).toBeGreaterThan(210);
     expect(km).toBeLessThan(250);
+  });
+});
+
+describe("estimateTravelMinutes", () => {
+  it("returns a small positive time for a short walkable hop", () => {
+    const minutes = estimateTravelMinutes(0.3);
+    expect(minutes).toBeGreaterThanOrEqual(5);
+    expect(minutes).toBeLessThanOrEqual(15);
+  });
+
+  it("increases with distance", () => {
+    expect(estimateTravelMinutes(1)).toBeLessThan(estimateTravelMinutes(10));
+    expect(estimateTravelMinutes(10)).toBeLessThan(estimateTravelMinutes(100));
+  });
+
+  it("assumes highway speed is faster per km than urban speed (a long trip isn't proportionally as slow)", () => {
+    // 10x the distance should take meaningfully less than 10x the time once it crosses into highway range.
+    const short = estimateTravelMinutes(5);
+    const long = estimateTravelMinutes(50);
+    expect(long).toBeLessThan(short * 10);
+  });
+
+  it("never returns less than 5 minutes", () => {
+    expect(estimateTravelMinutes(0)).toBeGreaterThanOrEqual(5);
+    expect(estimateTravelMinutes(0.01)).toBeGreaterThanOrEqual(5);
+  });
+});
+
+describe("estimateTravelMode", () => {
+  it("treats very short distances as walkable", () => {
+    expect(estimateTravelMode(0.3)).toBe("walk");
+  });
+
+  it("treats longer distances as requiring a drive", () => {
+    expect(estimateTravelMode(5)).toBe("drive");
+    expect(estimateTravelMode(50)).toBe("drive");
   });
 });

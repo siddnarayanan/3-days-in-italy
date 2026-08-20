@@ -1,5 +1,5 @@
-import { checkHoursConflict, dayKeyForDate } from "./hours";
-import { haversineKm } from "./geo";
+import { checkHoursConflict, dayKeyForDate, timeToMinutes } from "./hours";
+import { haversineKm, estimateTravelMinutes } from "./geo";
 import type { RawItinerary } from "./itinerarySchema";
 import type { Itinerary, ItineraryDay, ItineraryStop, Place, Preferences } from "./types";
 
@@ -23,6 +23,7 @@ export function buildItinerary(raw: RawItinerary, placesById: Map<string, Place>
     const dayKey = preferences.startDate ? dayKeyForDate(preferences.startDate, dayOffset) : null;
 
     const stops: ItineraryStop[] = [];
+    let prevStop: ItineraryStop | null = null;
     for (const rawStop of rawDay.stops) {
       const place = placesById.get(rawStop.placeId);
       if (!place) {
@@ -39,13 +40,42 @@ export function buildItinerary(raw: RawItinerary, placesById: Map<string, Place>
       const hoursWarning = checkHoursConflict(place.hoursParsed, dayKey, rawStop.startTime);
       if (hoursWarning) stopWarnings.push(hoursWarning);
 
-      stops.push({
+      // Does the schedule leave enough time for the previous stop's own visit,
+      // and then enough time to travel here on top of that? Two distinct
+      // problems: the first is about the previous stop overrunning into this
+      // one regardless of distance, the second is genuinely about the trip
+      // between them. Both skipped when times are already out of order —
+      // that's its own warning below.
+      if (prevStop && rawStop.startTime > prevStop.startTime) {
+        const gapMinutes = timeToMinutes(rawStop.startTime) - timeToMinutes(prevStop.startTime);
+        const prevDuration = prevStop.place?.durationMinutes ?? 60;
+
+        if (gapMinutes < prevDuration) {
+          // Attaches to the PREVIOUS stop — it's that visit's length that doesn't fit, not this one.
+          prevStop.warnings.push(
+            `Typically takes ~${prevDuration} min, but the schedule only allows ~${gapMinutes} min before ${place.name} at ${rawStop.startTime}.`
+          );
+        } else if (prevStop.place?.lat != null && prevStop.place.lng != null && place.lat != null && place.lng != null) {
+          const travelKm = haversineKm(prevStop.place.lat, prevStop.place.lng, place.lat, place.lng);
+          const travelMinutes = estimateTravelMinutes(travelKm);
+          const remainingMinutes = gapMinutes - prevDuration;
+          if (remainingMinutes < travelMinutes) {
+            stopWarnings.push(
+              `Only ~${remainingMinutes} min to get here from ${prevStop.place.name} — allow ~${travelMinutes} min based on distance.`
+            );
+          }
+        }
+      }
+
+      const stop: ItineraryStop = {
         placeId: rawStop.placeId,
         startTime: rawStop.startTime,
         note: rawStop.note,
         place,
         warnings: stopWarnings,
-      });
+      };
+      stops.push(stop);
+      prevStop = stop;
     }
 
     if (stops.length === 0) {

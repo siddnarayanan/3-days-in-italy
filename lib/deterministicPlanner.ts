@@ -1,5 +1,5 @@
-import { checkHoursConflict, dayKeyForDate } from "./hours";
-import { haversineKm } from "./geo";
+import { checkHoursConflict, dayKeyForDate, timeToMinutes } from "./hours";
+import { haversineKm, estimateTravelMinutes } from "./geo";
 import type { RawItinerary } from "./itinerarySchema";
 import type { DayKey, Place, Preferences } from "./types";
 
@@ -95,8 +95,11 @@ function scorePlace(place: Place, ctx: ScoreContext): number {
   score -= priorUses * 0.4;
 
   if (ctx.prevPlace?.lat != null && ctx.prevPlace?.lng != null && place.lat != null && place.lng != null) {
+    // Minutes, not raw km — a 50km highway hop and a 15km urban crawl cover
+    // very different ground but can cost similar real time, and it's the
+    // time that actually matters for whether this stop fits the day.
     const km = haversineKm(ctx.prevPlace.lat, ctx.prevPlace.lng, place.lat, place.lng);
-    score -= km / 15;
+    score -= estimateTravelMinutes(km) / 15;
   }
 
   return score;
@@ -176,7 +179,8 @@ export function buildDeterministicItinerary(candidatePlaces: Place[], preference
     const stops: RawItinerary["days"][number]["stops"] = [];
     let prevPlace: Place | null = null;
 
-    for (const slot of template) {
+    for (let slotIndex = 0; slotIndex < template.length; slotIndex++) {
+      const slot = template[slotIndex];
       const unused = candidatePlaces.filter((p) => !used.has(p.id));
       if (unused.length === 0) break;
 
@@ -186,7 +190,15 @@ export function buildDeterministicItinerary(candidatePlaces: Place[], preference
           ? byKind.filter((p) => !p.hoursParsed || checkHoursConflict(p.hoursParsed, dayKey, slot.time) === null)
           : byKind;
 
-      const pool = byKindAndHours.length > 0 ? byKindAndHours : byKind.length > 0 ? byKind : unused;
+      // A place's visit shouldn't still be "in progress" once the next slot is
+      // due to start — filter to places whose duration actually fits the gap
+      // (minus a little buffer for getting to whatever fills that next slot).
+      const nextSlot = template[slotIndex + 1];
+      const byDuration = nextSlot
+        ? byKindAndHours.filter((p) => (p.durationMinutes ?? 60) <= timeToMinutes(nextSlot.time) - timeToMinutes(slot.time) - 20)
+        : byKindAndHours;
+
+      const pool = byDuration.length > 0 ? byDuration : byKindAndHours.length > 0 ? byKindAndHours : byKind.length > 0 ? byKind : unused;
 
       const scored = pool
         .map((place) => ({ place, score: scorePlace(place, { prevPlace, typeUsageCount, interests, budget: preferences.budget }) }))

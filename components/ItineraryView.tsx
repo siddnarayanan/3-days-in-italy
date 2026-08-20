@@ -43,9 +43,6 @@ export default function ItineraryView({
   const [rawDays, setRawDays] = useState<RawItinerary["days"]>(() => toRawDays(itinerary));
   const [addingToDay, setAddingToDay] = useState<number | null>(null);
 
-  // A regenerate produces a brand-new itinerary object — resync local edits to it
-  // by adjusting state during render (React's recommended pattern for this,
-  // rather than an effect that would cause an extra render pass).
   const [syncedItinerary, setSyncedItinerary] = useState(itinerary);
   if (itinerary !== syncedItinerary) {
     setSyncedItinerary(itinerary);
@@ -55,10 +52,6 @@ export default function ItineraryView({
 
   const placesById = useMemo(() => new Map(availablePlaces.map((p) => [p.id, p])), [availablePlaces]);
 
-  // Re-derive the joined + validated itinerary from local edits on every change —
-  // reuses the exact same guardrail logic (lib/validate.ts) the server used, so
-  // manual add/remove get fresh hours/duplicate/geo-spread checks for free, with
-  // no round-trip.
   const derived = useMemo(
     () => buildItinerary({ days: rawDays, overallNotes: itinerary.overallNotes }, placesById, preferences),
     [rawDays, placesById, preferences, itinerary.overallNotes]
@@ -163,17 +156,6 @@ export default function ItineraryView({
           </button>
         </div>
       </div>
-
-      {warnings.length > 0 && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-          <p className="mb-1 text-sm font-medium text-red-800">Heads up — {warnings.length} thing(s) to double-check:</p>
-          <ul className="list-inside list-disc space-y-0.5 text-sm text-red-700">
-            {warnings.map((w, i) => (
-              <li key={i}>{w}</li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">

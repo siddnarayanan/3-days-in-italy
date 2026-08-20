@@ -1,4 +1,5 @@
 import { buildDeterministicItinerary } from "./deterministicPlanner";
+import { timeToMinutes } from "./hours";
 import type { Place, Preferences } from "./types";
 
 function makePlace(overrides: Partial<Place> & Pick<Place, "id" | "city">): Place {
@@ -103,6 +104,30 @@ describe("buildDeterministicItinerary", () => {
     pool.push(makePlace({ id: "wine-bar", city: "Florence", type: "experience", tags: ["wine"], rating: 5 }));
     const result = buildDeterministicItinerary(pool, { ...BASE_PREFS, notes: "I would love some wine tasting" });
     expect(result.overallNotes).toMatch(/wine/);
+  });
+
+  it("never schedules a stop whose visit duration overruns into the next stop's start time", () => {
+    // Mix in some unrealistically long activities so the duration filter is
+    // actually exercised, not trivially satisfied by the default 60min pool.
+    const pool = buildPool();
+    for (let i = 0; i < 4; i++) {
+      pool.push(
+        makePlace({ id: `marathon-${i}`, city: "Florence", type: "experience", durationMinutes: 400, rating: 5 })
+      );
+    }
+    const placesById = new Map(pool.map((p) => [p.id, p]));
+
+    // Run several times since slot-filling picks randomly among top candidates.
+    for (let run = 0; run < 10; run++) {
+      const result = buildDeterministicItinerary(pool, { ...BASE_PREFS, pace: "packed" });
+      for (const day of result.days) {
+        for (let i = 0; i < day.stops.length - 1; i++) {
+          const place = placesById.get(day.stops[i].placeId)!;
+          const gapMinutes = timeToMinutes(day.stops[i + 1].startTime) - timeToMinutes(day.stops[i].startTime);
+          expect(place.durationMinutes ?? 60).toBeLessThanOrEqual(gapMinutes);
+        }
+      }
+    }
   });
 
   it("degrades gracefully with a scarce pool instead of throwing or duplicating", () => {

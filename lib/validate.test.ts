@@ -173,6 +173,82 @@ describe("buildItinerary", () => {
     expect(result.days[0].warnings).toEqual(expect.arrayContaining([expect.stringContaining("spread")]));
   });
 
+  it("flags a stop scheduled without enough time to realistically travel there (duration fits, travel doesn't)", () => {
+    const places = new Map([
+      ["p1", makePlace({ id: "p1", city: "Florence", lat: FLORENCE.lat, lng: FLORENCE.lng, durationMinutes: 15 })],
+      ["p2", makePlace({ id: "p2", city: "Rome", lat: ROME.lat, lng: ROME.lng })],
+    ]);
+    const raw: RawItinerary = {
+      days: [
+        {
+          day: 1,
+          theme: "T",
+          summary: "S",
+          stops: [
+            { placeId: "p1", startTime: "10:00", note: "n" },
+            { placeId: "p2", startTime: "10:30", note: "n" }, // Rome is ~230km away — 15 min left over isn't close to enough
+          ],
+        },
+      ],
+      overallNotes: "",
+    };
+    const result = buildItinerary(raw, places, BASE_PREFS);
+    expect(result.days[0].stops[1].warnings).toEqual(
+      expect.arrayContaining([expect.stringContaining("Only ~")])
+    );
+  });
+
+  it("flags a stop whose own visit duration doesn't fit before the next stop, on the earlier stop", () => {
+    // The exact scenario this was built for: don't spend 5 hours somewhere
+    // when the next activity is only 3.5 hours later.
+    const places = new Map([
+      ["p1", makePlace({ id: "p1", city: "Florence", lat: FLORENCE.lat, lng: FLORENCE.lng, durationMinutes: 300 })],
+      ["p2", makePlace({ id: "p2", city: "Florence", lat: FLORENCE.lat + 0.001, lng: FLORENCE.lng })],
+    ]);
+    const raw: RawItinerary = {
+      days: [
+        {
+          day: 1,
+          theme: "T",
+          summary: "S",
+          stops: [
+            { placeId: "p1", startTime: "10:00", note: "n" },
+            { placeId: "p2", startTime: "13:30", note: "n" }, // 3.5 hours later, place takes 5
+          ],
+        },
+      ],
+      overallNotes: "",
+    };
+    const result = buildItinerary(raw, places, BASE_PREFS);
+    expect(result.days[0].stops[0].warnings).toEqual(
+      expect.arrayContaining([expect.stringContaining("Typically takes ~300 min")])
+    );
+    expect(result.days[0].stops[1].warnings).toEqual([]);
+  });
+
+  it("does not flag a travel-time gap when there's clearly enough time", () => {
+    const places = new Map([
+      ["p1", makePlace({ id: "p1", city: "Florence", lat: FLORENCE.lat, lng: FLORENCE.lng, durationMinutes: 60 })],
+      ["p2", makePlace({ id: "p2", city: "Florence", lat: FLORENCE.lat + 0.001, lng: FLORENCE.lng })],
+    ]);
+    const raw: RawItinerary = {
+      days: [
+        {
+          day: 1,
+          theme: "T",
+          summary: "S",
+          stops: [
+            { placeId: "p1", startTime: "10:00", note: "n" },
+            { placeId: "p2", startTime: "12:00", note: "n" }, // two hours for a ~100m hop
+          ],
+        },
+      ],
+      overallNotes: "",
+    };
+    const result = buildItinerary(raw, places, BASE_PREFS);
+    expect(result.days[0].stops[1].warnings).toEqual([]);
+  });
+
   it("flags a trip that spans a wide geographic area across days", () => {
     const places = new Map([
       ["p1", makePlace({ id: "p1", city: "Florence", lat: FLORENCE.lat, lng: FLORENCE.lng })],
